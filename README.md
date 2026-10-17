@@ -26,7 +26,7 @@ The app ships as a normal Windows installer, so the PC it runs on needs nothing 
    npm run package
    ```
 
-   This type-checks and bundles the web app, then wraps it in Electron and writes `release/Synthonie-Setup-0.1.0.exe` (about 100 MB; the first build also downloads the Electron and NSIS tooling).
+   This type-checks and bundles the web app, then wraps it in Electron and writes `release/Synthonie-Setup-<version>.exe` (about 100 MB; the first build also downloads the Electron and NSIS tooling). Once releases are set up (next section) you can skip this and download the installer from the repo's Releases page instead.
 
 2. Copy that `.exe` to the other PC (USB stick, OneDrive, whatever) and double-click it. It installs for the current user only, with no admin prompt, into `%LOCALAPPDATA%\Programs\synthonie`, puts **Synthonie** on the desktop and in the Start menu, and opens the app.
 
