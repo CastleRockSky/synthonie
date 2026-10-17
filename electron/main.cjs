@@ -102,7 +102,8 @@ function setupAutoUpdate() {
       type: 'info',
       title: 'Update ready',
       message: `Synthonie ${info.version} is ready to install.`,
-      detail: 'Your work is autosaved, so restarting is safe. If you pick Later, it installs the next time you close the app.',
+      detail:
+        'Your work is autosaved, so restarting is safe. The app closes, installs in the background (this can take a minute or two the first time Windows sees the new file) and opens again by itself. If you pick Later, it installs the next time you close the app.',
       buttons: ['Restart now', 'Later'],
       defaultId: 0,
       cancelId: 1,
