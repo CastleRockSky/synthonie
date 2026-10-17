@@ -53,12 +53,12 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 
 ## 5. Architecture
 
-- **Web app**, runs locally in Edge or Chrome: Vite + React + TypeScript. No server logic, no accounts, no internet needed after install. Launch with `start.bat` (serves the built app and opens an Edge app window).
+- **Web app**, runs locally in Edge or Chrome: Vite + React + TypeScript. No server logic, no accounts, no internet needed after install. Launch with `start.bat` (serves the built app and opens an Edge app window), or install it as a **Windows desktop app**: an Electron shell (`electron/`) that loads the same build in a window and adds only what a page cannot do itself, through a small bridge typed in `src/files/desktop.ts`. `npm run package` makes the installer, which also registers `.zekeproj` so a double-clicked project opens in the app.
 - **Audio: Web Audio API directly**, no audio framework. The same engine code builds the live graph and the offline render, so what you hear is what you export. Keeping the raw API visible is deliberate: it is what he would eventually learn, and there is no black box between the UI and the sound.
 - **Scheduling:** a look-ahead scheduler (a timer every 40 ms schedules events ~200 ms ahead on the audio clock) gives sample-accurate timing for drums, notes and random layer hits. The same scheduler schedules the whole duration at once for offline rendering.
 - **State:** one immutable `Project` object in a zustand store. The engine diffs the previous and next project on every change and applies it live while playing: slider moves update node parameters, structural changes restart just the affected layer, grid edits are picked up at the next step.
 - **Sounds:** decoded `AudioBuffer`s and original file bytes live in a `SoundBank` outside React state. The project only stores metadata, so the UI state stays small and serializable.
-- **Files:** File System Access API (Save overwrites the opened file; Open/Save-as show native dialogs) with a download/upload fallback. IndexedDB autosave of the project and its sound bytes.
+- **Files:** in the desktop app, Electron's native dialogs over the preload bridge; in a browser, the File System Access API with a download/upload fallback. Either way Save overwrites the opened file silently and Open/Save-as show native dialogs. IndexedDB autosave of the project and its sound bytes.
 - **Recording:** `getUserMedia` into an `AudioWorklet` that streams raw float samples to the page, so recordings are lossless and the meter is live.
 
 ### Source layout
@@ -72,6 +72,7 @@ src/
   ui/         TopBar, SoundLibrary, Soundscape/LayerCard, BeatMaker/DrumGrid/MelodyGrid,
               RecorderPanel, ExportDialog, HelpDialog, controls
   app/        boot.ts (startup), instances.ts (engine + bank singletons)
+electron/     main.cjs (window, microphone permission, native dialogs, double-clicked projects), preload.cjs (the window.zekeDesktop bridge)
 ```
 
 ### Project file format (`.zekeproj`)
@@ -99,7 +100,7 @@ Each version is a set of independent features. Any one can be pulled forward.
 - Export OGG; export a scene pack (folder + manifest JSON) ready for Godot / Unity / Unreal; batch export.
 
 **v0.5 — Packaging and input**
-- Installer (Electron or Tauri) or PWA install, so no terminal or Node is needed on the kid's PC.
+- Installer: **done** (Electron shell + NSIS installer via `npm run package`), so no terminal or Node is needed on the kid's PC.
 - MIDI keyboard input; computer-keyboard piano; themes.
 
 ## 7. What each stage teaches

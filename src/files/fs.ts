@@ -1,6 +1,9 @@
-// Saving and opening files. Uses the File System Access API when the browser has it
-// (Edge/Chrome: native dialogs, and Save can overwrite the opened file), otherwise falls
-// back to a download link and a file input.
+// Saving and opening files. Inside the desktop app this goes through the Electron bridge
+// (native dialogs, and Save overwrites the opened file). In a browser it uses the File
+// System Access API when available (Edge/Chrome: native dialogs, Save can overwrite the
+// opened file), otherwise it falls back to a download link and a file input.
+
+import { desktopBridge, type DialogFilter } from './desktop';
 
 export const PROJECT_TYPE: FilePickerAcceptType = { description: 'Zeke Synth project', accept: { 'application/zip': ['.zekeproj'] } };
 export const WAV_TYPE: FilePickerAcceptType = { description: 'WAV audio', accept: { 'audio/wav': ['.wav'] } };
@@ -13,26 +16,39 @@ export function toBlob(bytes: Uint8Array, type: string): Blob {
   return new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type });
 }
 
+/**
+ * Where a saved or opened file lives, so Save can overwrite it later without asking:
+ * a browser file handle, or a path when running in the desktop app.
+ */
+export type FileRef = { kind: 'handle'; handle: FileSystemFileHandle } | { kind: 'path'; path: string };
+
 export interface SavedFile {
-  handle?: FileSystemFileHandle;
+  ref?: FileRef;
   name: string;
 }
 
-/** With a handle, overwrites silently (Save); without, asks where (Save as). Undefined if cancelled. */
+/** With a ref, overwrites silently (Save); without, asks where (Save as). Undefined if cancelled. */
 export async function saveBytes(
   bytes: Uint8Array,
   suggestedName: string,
   type: FilePickerAcceptType,
   mime: string,
-  handle?: FileSystemFileHandle,
+  ref?: FileRef,
 ): Promise<SavedFile | undefined> {
+  const desktop = desktopBridge();
+  if (desktop) {
+    const path = ref?.kind === 'path' ? ref.path : await desktop.showSaveDialog({ suggestedName, filter: toFilter(type) });
+    if (!path) return undefined;
+    await desktop.writeFile(path, bytes);
+    return { ref: { kind: 'path', path }, name: fileNameOf(path) };
+  }
   if (window.showSaveFilePicker) {
     try {
-      const h = handle ?? (await window.showSaveFilePicker({ suggestedName, types: [type] }));
+      const h = ref?.kind === 'handle' ? ref.handle : await window.showSaveFilePicker({ suggestedName, types: [type] });
       const w = await h.createWritable();
       await w.write(toBlob(bytes, mime));
       await w.close();
-      return { handle: h, name: h.name };
+      return { ref: { kind: 'handle', handle: h }, name: h.name };
     } catch (e) {
       if ((e as DOMException).name === 'AbortError') return undefined;
       throw e;
@@ -52,17 +68,22 @@ export async function saveBytes(
 export interface OpenedFile {
   name: string;
   bytes: Uint8Array<ArrayBuffer>;
-  handle?: FileSystemFileHandle;
+  ref?: FileRef;
 }
 
 export async function openFiles(type: FilePickerAcceptType, multiple: boolean): Promise<OpenedFile[]> {
+  const desktop = desktopBridge();
+  if (desktop) {
+    const files = await desktop.openFiles({ filter: toFilter(type), multiple });
+    return files.map((f) => ({ name: f.name, bytes: f.bytes, ref: { kind: 'path', path: f.path } }));
+  }
   if (window.showOpenFilePicker) {
     try {
       const handles = await window.showOpenFilePicker({ multiple, types: [type] });
       return Promise.all(
         handles.map(async (h) => {
           const f = await h.getFile();
-          return { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()), handle: h };
+          return { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()), ref: { kind: 'handle', handle: h } as FileRef };
         }),
       );
     } catch (e) {
@@ -82,6 +103,21 @@ export async function openFiles(type: FilePickerAcceptType, multiple: boolean): 
     input.oncancel = () => resolve([]);
     input.click();
   });
+}
+
+/** The browser picker's accept type as a native dialog filter ("Audio files", ["wav", "mp3"]). */
+function toFilter(type: FilePickerAcceptType): DialogFilter {
+  return {
+    name: type.description ?? 'Files',
+    extensions: Object.values(type.accept)
+      .flat()
+      .map((ext) => ext.replace(/^\./, '')),
+  };
+}
+
+/** The last part of a path, whichever slashes it uses. */
+function fileNameOf(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
 }
 
 export function extOf(name: string): string {

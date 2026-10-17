@@ -10,15 +10,40 @@ The spec, design principles and roadmap are in [docs/SPEC.md](docs/SPEC.md).
 - **Soundscape**: stack sounds as layers. Each layer loops forever, plays once, or plays at random intervals (owls, thunder), with Volume, Left/Right, Pitch, Muffle (low-pass) and Space (reverb) sliders.
 - **Beat Maker**: a 16- or 32-step drum grid where any sound can be a drum, plus a tune grid that only offers notes from a pentatonic scale (Happy or Spooky) so anything drawn sounds fine. Five synth instruments, tempo and swing. Everything can be changed while it plays.
 - **Export** a stereo WAV of any length, optionally as a seamless loop.
-- **Save** everything (including recordings) in one `.zekeproj` file, and autosave to the browser so an accidental close loses nothing.
+- **Save** everything (including recordings) in one `.zekeproj` file, and autosave so an accidental close loses nothing.
 
-## Running it
+## Installing on another PC
 
-Requirements: Windows (or anything else) with [Node.js](https://nodejs.org) 20 or newer, and Microsoft Edge or Google Chrome.
+The app ships as a normal Windows installer, so the PC it runs on needs nothing else: no Node.js, no terminal.
 
-**For him:** double-click `start.bat`. The first run installs and builds (about a minute), then it opens in its own window. Keep the black console window open while using it; close it to stop.
+1. On your own machine, build the installer once (needs Node.js 20 or newer):
 
-**For you:**
+   ```bash
+   npm install
+   ```
+
+   ```bash
+   npm run package
+   ```
+
+   This type-checks and bundles the web app, then wraps it in Electron and writes `release/Zeke-Synth-Setup-0.1.0.exe` (about 100 MB; the first build also downloads the Electron and NSIS tooling).
+
+2. Copy that `.exe` to the other PC (USB stick, OneDrive, whatever) and double-click it. It installs for the current user only, with no admin prompt, into `%LOCALAPPDATA%\Programs\zeke-synth`, puts **Zeke Synth** on the desktop and in the Start menu, and opens the app.
+
+3. The installer is not code-signed, so Windows SmartScreen will show "Windows protected your PC" the first time. Click **More info**, then **Run anyway**. That happens once.
+
+Good to know:
+
+- **Microphone**: the app asks Windows for the microphone the first time you press Record. If recording says no microphone was found, check Settings → Privacy & security → Microphone, and make sure "Let desktop apps access your microphone" is on.
+- **Files**: Save, Open and Export use the normal Windows dialogs and start in Documents. Save overwrites the file you opened without asking; Save as asks for a new one.
+- **Project files**: the installer registers `.zekeproj` with Windows, so double-clicking a project in Explorer opens it in Zeke Synth (in the window that is already open, if the app is running), and Save then overwrites that file without asking.
+- **Autosave** lives in `%APPDATA%\Zeke Synth`, so closing the window without saving loses nothing. Uninstalling (Settings → Apps) leaves that folder in place.
+- **Updating**: build a new installer and run it over the old one.
+- **F12** opens the developer tools inside the app, which is handy if something goes wrong on his PC.
+
+## Running it for development
+
+Requirements: [Node.js](https://nodejs.org) 20 or newer. The web app itself runs in Microsoft Edge or Google Chrome.
 
 ```bash
 npm install
@@ -28,9 +53,17 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. Other scripts: `npm run build` (type-check and bundle to `dist/`), `npm test` (unit tests for the pure audio helpers and the project file format), `npm run typecheck`, `npm start` (what `start.bat` runs; add `-- --build` to force a rebuild).
+Then open http://localhost:5173. This is the plain browser workflow and is unchanged by the desktop packaging.
 
-In the browser DevTools console, `zeke.engine`, `zeke.bank` and `zeke.store.getState()` expose the running app.
+Other scripts:
+
+- `npm run desktop`: the Electron window against the same dev server, so edits hot-reload inside the real shell (native dialogs, microphone permission, autosave in `%APPDATA%\Zeke Synth`).
+- `npm run package`: build the installer into `release/` (see above). `release/win-unpacked/Zeke Synth.exe` is the same app without the installer.
+- `npm run build` (type-check and bundle to `dist/`), `npm test` (unit tests for the pure audio helpers and the project file format), `npm run typecheck`.
+- `npm run icon`: regenerate `build/icon.png` and `build/icon.ico` from `scripts/make-icon.mjs`.
+- `npm start` / `start.bat`: the older no-installer way, which serves `dist/` locally and opens an Edge app window. Still works, but needs Node on that PC.
+
+In the browser DevTools console (or F12 inside the desktop app), `zeke.engine`, `zeke.bank` and `zeke.store.getState()` expose the running app.
 
 ## How the code is organised
 
@@ -38,11 +71,14 @@ In the browser DevTools console, `zeke.engine`, `zeke.bank` and `zeke.store.getS
 |---|---|
 | `src/model/` | The `Project` document (`types.ts`), the starter project and helpers (`defaults.ts`), and every state change (`store.ts`). |
 | `src/audio/` | `engine.ts` builds the Web Audio graph for live playback and for export from the same code. `builtins.ts` generates the built-in sounds. `synth.ts` holds the melody instruments as data. `scales.ts`, `recorder.ts`, `reverb.ts`, `wav.ts`, `dsp.ts` (pure helpers with tests). |
-| `src/files/` | The `.zekeproj` zip format, native save/open dialogs with fallbacks, IndexedDB autosave. |
+| `src/files/` | The `.zekeproj` zip format, save/open dialogs (`fs.ts`, which uses the desktop bridge when present, else the browser's File System Access API, else download/upload), the desktop bridge types (`desktop.ts`), IndexedDB autosave. |
 | `src/ui/` | React components, one per screen area. |
 | `src/app/` | Startup (`boot.ts`), the engine and sound bank singletons, and the button actions (`actions.ts`). |
+| `electron/` | The desktop shell: `main.cjs` opens the window, allows the microphone, shows the native file dialogs, and hands over a project that was double-clicked in Explorer; `preload.cjs` exposes those few calls to the page as `window.zekeDesktop`. |
+| `build/` | The app icon used by the installer and the window. |
+| `scripts/` | Launchers and the icon generator. |
 
-There is no audio framework in between: the engine uses the Web Audio API directly, so every sound can be traced from a slider to the node that makes it.
+There is no audio framework in between: the engine uses the Web Audio API directly, so every sound can be traced from a slider to the node that makes it. The desktop shell is the same web build loaded from `dist/`; the page never sees Node or Electron, only the small bridge. Every library is bundled by Vite, which is why they are all devDependencies and the installer contains only `dist/` and `electron/`.
 
 ## Growing it
 
@@ -52,12 +88,13 @@ Each roadmap item in the spec is meant to be a small, separate change. Some firs
 - **A new instrument**: add an entry to `INSTRUMENTS` in `src/audio/synth.ts`.
 - **A new scale**: add an entry to `SCALES` in `src/audio/scales.ts`.
 - **A new layer control** (say, a fade-in): add the field to `Layer` in `types.ts`, a default in `defaults.ts`, a slider in `Soundscape.tsx`, and use it in `LayerVoice` in `engine.ts`.
+- **Something only the desktop app can do** (a list of recent projects, say): add an IPC handler in `electron/main.cjs`, expose it in `electron/preload.cjs`, and type it in `src/files/desktop.ts`. Opening a double-clicked `.zekeproj` (`onOpenProject`) is a small worked example of exactly that.
 
 Project files carry a `version` number; when the format changes, bump it and add an upgrade step in `migrate()` in `src/files/project-file.ts` so old projects keep opening.
 
 ## Known limits in v0.1
 
-- Edge or Chrome only (the save dialogs and microphone recording use APIs Firefox and Safari lack).
+- In a browser, Edge or Chrome only (the save dialogs and microphone recording use APIs Firefox and Safari lack). The desktop app has no such limit.
 - One beat pattern per project; no song arrangement yet.
 - Export is WAV only.
-- Needs Node.js installed on the PC that runs it. Packaging it as an installer is on the roadmap.
+- The installer is Windows-only and unsigned (see the SmartScreen note above).

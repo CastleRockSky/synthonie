@@ -1,9 +1,11 @@
-// Startup: generate the built-in sounds, restore the autosaved project, start autosaving.
+// Startup: generate the built-in sounds, restore the autosaved project, start autosaving,
+// then let the desktop app hand over a project that was double-clicked.
 
 import { getAudioContext } from '../audio/context';
 import { restoreAutosave, startAutosave } from '../files/autosave';
 import { newProject, withAllBuiltins } from '../model/defaults';
 import { useStore } from '../model/store';
+import { watchDesktopProjects } from './actions';
 import { bank } from './instances';
 
 let booted = false;
@@ -19,4 +21,5 @@ export async function boot(): Promise<void> {
   else st.setProject(newProject(), { clean: true });
   startAutosave();
   st.setReady(true);
+  watchDesktopProjects();
 }

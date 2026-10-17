@@ -4,15 +4,16 @@ import { getAudioContext } from '../audio/context';
 import { patternSeconds } from '../audio/engine';
 import { audioBufferToWav, copyChannel, encodeWav } from '../audio/wav';
 import { forgetSoundBytes, persistSoundBytes } from '../files/autosave';
-import { AUDIO_TYPE, PROJECT_TYPE, WAV_TYPE, baseName, extOf, openFiles, safeName, saveBytes } from '../files/fs';
+import { desktopBridge, type DesktopFile } from '../files/desktop';
+import { AUDIO_TYPE, PROJECT_TYPE, WAV_TYPE, baseName, extOf, openFiles, safeName, saveBytes, type FileRef } from '../files/fs';
 import { packProject, unpackProject } from '../files/project-file';
 import { PROJECT_EXT, dropSounds, newProject as makeNewProject, uid, withAllBuiltins } from '../model/defaults';
 import { useStore } from '../model/store';
 import type { Project, SoundId } from '../model/types';
 import { bank, engine } from './instances';
 
-/** The file the current project was opened from / saved to, so Save can overwrite it. */
-let fileHandle: FileSystemFileHandle | undefined;
+/** The file the current project was opened from / saved to, so Save can overwrite it silently. */
+let fileRef: FileRef | undefined;
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -20,7 +21,7 @@ export function newProject(): void {
   const st = useStore.getState();
   if (st.dirty && !window.confirm('Start a new project? Unsaved changes will be lost.')) return;
   engine.stop();
-  fileHandle = undefined;
+  fileRef = undefined;
   st.setProject(makeNewProject(), { clean: true, fileName: null });
 }
 
@@ -28,13 +29,30 @@ export async function openProject(): Promise<void> {
   const [file] = await openFiles(PROJECT_TYPE, false);
   if (!file) return;
   try {
-    await loadProjectBytes(file.bytes, file.name, file.handle);
+    await loadProjectBytes(file.bytes, file.name, file.ref);
   } catch (e) {
     window.alert(`Could not open that file.\n${msg(e)}`);
   }
 }
 
-export async function loadProjectBytes(bytes: Uint8Array, fileName: string | null, handle?: FileSystemFileHandle): Promise<void> {
+/**
+ * Inside the desktop app, open the projects that get double-clicked in Explorer (or passed
+ * on the command line). Called once at the end of boot; in a browser it does nothing.
+ */
+export function watchDesktopProjects(): void {
+  desktopBridge()?.onOpenProject((file) => void openDesktopProject(file));
+}
+
+async function openDesktopProject(file: DesktopFile): Promise<void> {
+  if (useStore.getState().dirty && !window.confirm(`Open ${file.name}? Unsaved changes will be lost.`)) return;
+  try {
+    await loadProjectBytes(file.bytes, file.name, { kind: 'path', path: file.path });
+  } catch (e) {
+    window.alert(`Could not open that file.\n${msg(e)}`);
+  }
+}
+
+export async function loadProjectBytes(bytes: Uint8Array, fileName: string | null, ref?: FileRef): Promise<void> {
   const { project, sounds } = unpackProject(bytes);
   const ctx = getAudioContext();
   const bad = new Set<SoundId>();
@@ -53,7 +71,7 @@ export async function loadProjectBytes(bytes: Uint8Array, fileName: string | nul
     }
   }
   engine.stop();
-  fileHandle = handle;
+  fileRef = ref;
   useStore.getState().setProject(withAllBuiltins(dropSounds(project, bad)), { clean: true, fileName });
   if (bad.size) window.alert(`${bad.size} sound(s) in this project could not be loaded and were skipped.`);
 }
@@ -63,9 +81,9 @@ export async function saveProject(saveAs: boolean): Promise<void> {
   const bytes = packProject(st.project, bank);
   const name = `${safeName(st.project.name)}.${PROJECT_EXT}`;
   try {
-    const res = await saveBytes(bytes, name, PROJECT_TYPE, 'application/zip', saveAs ? undefined : fileHandle);
+    const res = await saveBytes(bytes, name, PROJECT_TYPE, 'application/zip', saveAs ? undefined : fileRef);
     if (!res) return;
-    fileHandle = res.handle;
+    fileRef = res.ref;
     st.markClean(res.name);
   } catch (e) {
     window.alert(`Could not save.\n${msg(e)}`);
