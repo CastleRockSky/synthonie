@@ -60,8 +60,20 @@ export const GUITAR_PRESETS: Record<string, RigPreset> = {
 
 export const GUITAR_PRESET_NAMES = Object.keys(GUITAR_PRESETS);
 
+/** A preset the kid saved himself. Kept per machine (IndexedDB), outside any project. */
+export interface UserPreset {
+  name: string;
+  rig: RigPreset;
+}
+
 export function defaultRig(): GuitarRig {
   return { version: 1, preset: 'Clean', inputGain: 0.5, monitor: true, ...structuredClone(CLEAN) };
+}
+
+/** The preset part of a rig: everything except the machine-specific bits. */
+export function rigToPreset(rig: GuitarRig): RigPreset {
+  const { version: _v, preset: _p, inputGain: _g, monitor: _m, ...rest } = rig;
+  return structuredClone(rest);
 }
 
 /** Pedal order on the board, which is also the signal order. */

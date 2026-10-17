@@ -3,7 +3,8 @@ import * as actions from '../app/actions';
 import { guitar } from '../app/instances';
 import { getAudioContext } from '../audio/context';
 import { applyEdgeFades, trimSilence } from '../audio/dsp';
-import type { AudioInputInfo, GuitarSource } from '../audio/guitar';
+import type { AudioInputInfo, GuitarSource, LatencyInfo } from '../audio/guitar';
+import { canChooseOutput, listOutputs, rememberedOutput, setOutput, type AudioOutputInfo } from '../audio/output';
 import type { Pitch } from '../audio/pitch';
 import { MicRecorder } from '../audio/recorder';
 import { desktopBridge } from '../files/desktop';
@@ -29,7 +30,6 @@ function rememberedSource(): SourceChoice {
 export function Guitar() {
   const rig = useStore((s) => s.project.guitar);
   const updateGuitar = useStore((s) => s.updateGuitar);
-  const applyPreset = useStore((s) => s.applyGuitarPreset);
   const [choice, setChoice] = useState<SourceChoice>(rememberedSource);
   const [inputs, setInputs] = useState<AudioInputInfo[]>([]);
   const [running, setRunning] = useState(guitar.running);
@@ -124,6 +124,7 @@ export function Guitar() {
             </select>
           </label>
         )}
+        <OutputPicker running={running} />
         <Slider label="Input gain" value={rig.inputGain} min={0} max={1} onChange={(v) => updateGuitar({ inputGain: v })} format={pct} reset={0.5} />
         <LevelMeter running={running} which="input" />
         <Toggle
@@ -140,17 +141,10 @@ export function Guitar() {
       {choice.kind === 'system' && running && (
         <p className="hint">Recording everything the PC plays, including other apps such as Guitar Rig. Monitoring is off so the speakers do not feed back.</p>
       )}
+      <LatencyReadout running={running} />
       {tunerOn && <Tuner running={running} />}
 
-      <div className="preset-bar">
-        <span className="hint">Presets</span>
-        {GUITAR_PRESET_NAMES.map((name) => (
-          <button key={name} className={rig.preset === name ? 'primary' : ''} onClick={() => applyPreset(name)}>
-            {name}
-          </button>
-        ))}
-        {rig.preset === null && <span className="hint">(edited)</span>}
-      </div>
+      <PresetBar rig={rig} />
 
       <Pedalboard rig={rig} />
 
@@ -159,6 +153,165 @@ export function Guitar() {
         <LevelMeter running={running} which="output" />
       </div>
     </section>
+  );
+}
+
+/** Built-in presets, the kid's saved ones (with delete), and a Save box. */
+function PresetBar({ rig }: { rig: GuitarRig }) {
+  const applyPreset = useStore((s) => s.applyGuitarPreset);
+  const userPresets = useStore((s) => s.guitarPresets);
+  const savePreset = useStore((s) => s.saveGuitarPreset);
+  const deletePreset = useStore((s) => s.deleteGuitarPreset);
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState('');
+
+  const startNaming = () => {
+    const own = rig.preset !== null && userPresets.some((u) => u.name === rig.preset);
+    setName(own ? rig.preset! : `My preset ${userPresets.length + 1}`);
+    setNaming(true);
+  };
+  const commit = () => {
+    if (name.trim()) savePreset(name);
+    setNaming(false);
+  };
+
+  return (
+    <div className="preset-bar">
+      <span className="hint">Presets</span>
+      {GUITAR_PRESET_NAMES.map((n) => (
+        <button key={n} className={rig.preset === n ? 'primary' : ''} onClick={() => applyPreset(n)}>
+          {n}
+        </button>
+      ))}
+      {userPresets.map((u) => (
+        <span key={u.name} className="chip-group">
+          <button className={rig.preset === u.name ? 'primary' : ''} onClick={() => applyPreset(u.name)} title="A preset you saved">
+            ⭐ {u.name}
+          </button>
+          <button
+            className="icon-btn danger chip-x"
+            title={`Delete "${u.name}"`}
+            onClick={() => {
+              if (window.confirm(`Delete the preset "${u.name}"?`)) deletePreset(u.name);
+            }}
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      {naming ? (
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            commit();
+          }}
+        >
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onFocus={(e) => e.target.select()} placeholder="Preset name" maxLength={30} />
+          <button type="submit" className="primary">
+            Save
+          </button>
+          <button type="button" onClick={() => setNaming(false)}>
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <button onClick={startNaming} title="Keep the current pedal settings as a preset of your own">
+          💾 Save preset
+        </button>
+      )}
+      {rig.preset === null && <span className="hint">(edited)</span>}
+    </div>
+  );
+}
+
+/** Where the whole app plays. Only shown where the browser can choose (Chromium can). */
+function OutputPicker({ running }: { running: boolean }) {
+  const [outputs, setOutputs] = useState<AudioOutputInfo[]>([]);
+  const [value, setValue] = useState(rememberedOutput);
+  const [note, setNote] = useState('');
+  const supported = canChooseOutput(getAudioContext());
+
+  useEffect(() => {
+    void listOutputs().then(setOutputs); // names appear once an input has been opened
+  }, [running]);
+
+  if (!supported) return null;
+  const pick = async (id: string) => {
+    setValue(id);
+    setNote('');
+    try {
+      await setOutput(getAudioContext(), id);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const known = outputs.some((o) => o.deviceId === value);
+  return (
+    <label className="field" title="Where everything plays. Headphones on the interface's own jack have the least delay.">
+      Output
+      <select value={value} onChange={(e) => void pick(e.target.value)}>
+        <option value="default">🔊 Default output</option>
+        {outputs
+          .filter((o) => o.deviceId !== 'default')
+          .map((o) => (
+            <option key={o.deviceId} value={o.deviceId}>
+              🎧 {o.label}
+            </option>
+          ))}
+        {value !== 'default' && !known && <option value={value}>Remembered output</option>}
+      </select>
+      {note && <span className="error">{note}</span>}
+    </label>
+  );
+}
+
+/** The pick-to-sound delay as the browser reports it, with what to do about it. */
+function LatencyReadout({ running }: { running: boolean }) {
+  const [info, setInfo] = useState<LatencyInfo | null>(null);
+  const [tips, setTips] = useState(false);
+
+  useEffect(() => {
+    if (!running) {
+      setInfo(null);
+      return;
+    }
+    const tick = () => setInfo(guitar.latencyInfo());
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  if (!info) return null;
+  const mismatch = info.inputRate !== null && info.inputRate !== info.contextRate;
+  return (
+    <div className="latency">
+      <span>
+        Delay: about <b>{Math.round(info.totalMs)} ms</b>
+        {info.inputMs === null && <span className="hint"> for the output; a plugged-in guitar adds its input buffer</span>}
+      </span>
+      {info.compressorOn && <span className="hint">Squash adds about 6 ms while it is on.</span>}
+      {mismatch && (
+        <span className="hint warn">
+          The interface runs at {info.inputRate} Hz but the app at {info.contextRate} Hz. Set it to {info.contextRate} Hz in Windows Sound settings for less delay.
+        </span>
+      )}
+      <button className="icon-btn" onClick={() => setTips(!tips)} title="How to get less delay">
+        ?
+      </button>
+      {tips && (
+        <ul className="tips">
+          <li>
+            Listen through headphones on the interface&apos;s own jack and pick it under <b>Output</b>. Bluetooth adds a tenth of a second or more, and a
+            monitor&apos;s HDMI sound is slow too.
+          </li>
+          <li>In Windows Sound settings, set the interface to the same rate as the app ({info.contextRate} Hz) and switch off its audio enhancements.</li>
+          <li>Close other programs that use the sound device.</li>
+          <li>Keep Squash off while playing live; it adds 6 ms. Switch it on for a take if you like the sound.</li>
+          <li>About 20 ms is the floor for a PC audio stack like this one, which is the sound travelling about 7 metres. Dedicated guitar programs get lower with special drivers; that is on the roadmap.</li>
+        </ul>
+      )}
+    </div>
   );
 }
 

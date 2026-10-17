@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { GUITAR_PRESETS, PEDAL_ORDER, defaultRig } from '../model/guitar-presets';
-import { shaperCurve } from './guitar';
+import { GUITAR_PRESETS, PEDAL_ORDER, defaultRig, rigToPreset } from '../model/guitar-presets';
+import { shaperCurve, softLimitCurve } from './guitar';
 import { renderDemoRiff } from './guitar-demo';
+
+describe('softLimitCurve', () => {
+  it('leaves normal levels alone, eases loud ones, and never reaches full scale', () => {
+    const c = softLimitCurve(4001); // index i maps to a signal of (i / 4000 * 2 - 1) * 2
+    expect(c[2000]).toBe(0); // 0
+    expect(c[2500]).toBeCloseTo(0.5, 6); // 0.5 passes through untouched
+    expect(c[2800]).toBeCloseTo(0.8, 6); // the knee
+    expect(c[3000]).toBeLessThan(1); // 1.0 is eased
+    expect(c[3000]).toBeGreaterThan(0.9);
+    expect(c[4000]).toBeLessThan(1); // 2.0 still under the ceiling
+    for (let i = 1; i < c.length; i++) expect(c[i]).toBeGreaterThanOrEqual(c[i - 1]);
+    expect(c[1500]).toBeCloseTo(-c[2500], 6); // symmetric
+  });
+});
+
+describe('rigToPreset', () => {
+  it('drops the machine-specific fields and copies the rest', () => {
+    const rig = defaultRig();
+    const p = rigToPreset(rig) as unknown as Record<string, unknown>;
+    for (const field of ['version', 'preset', 'inputGain', 'monitor']) expect(field in p, field).toBe(false);
+    expect(p.amp).toEqual(rig.amp);
+    expect(p.amp).not.toBe(rig.amp);
+    expect(p.volume).toBe(rig.volume);
+  });
+});
 
 describe('shaperCurve', () => {
   for (const kind of ['soft', 'tube'] as const) {

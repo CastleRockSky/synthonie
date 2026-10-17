@@ -29,6 +29,17 @@ export interface GuitarLevels {
   output: number;
 }
 
+export interface LatencyInfo {
+  /** Input buffer, when the device reports it; null for the demo riff. */
+  inputMs: number | null;
+  outputMs: number;
+  totalMs: number;
+  inputRate: number | null;
+  contextRate: number;
+  /** The Squash pedal adds about 6 ms of look-ahead while it is on. */
+  compressorOn: boolean;
+}
+
 /** A noise gate: an envelope follower that opens fast and closes gently below the threshold. */
 const GATE_WORKLET = `
 class SynthonieGate extends AudioWorkletProcessor {
@@ -55,6 +66,23 @@ class SynthonieGate extends AudioWorkletProcessor {
 }
 registerProcessor('synthonie-gate', SynthonieGate);
 `;
+
+/**
+ * The output safety clipper: untouched up to 0.8, then eased into a ceiling just below 1.
+ * It replaces a compressor-style limiter because that one needs 6 ms of look-ahead, which
+ * is 6 ms more between pick and sound. The curve covers signals up to twice full scale;
+ * the engine halves the signal before it and the curve is drawn for the doubled range.
+ */
+export function softLimitCurve(samples = 4096): Float32Array<ArrayBuffer> {
+  const c = new Float32Array(samples);
+  for (let i = 0; i < samples; i++) {
+    const v = ((i / (samples - 1)) * 2 - 1) * 2; // -2..2
+    const a = Math.abs(v);
+    const y = a <= 0.8 ? a : 0.8 + 0.2 * Math.tanh((a - 0.8) / 0.2);
+    c[i] = Math.sign(v) * y;
+  }
+  return c;
+}
 
 /** A waveshaper curve: 'soft' is a symmetric overdrive, 'tube' clips the negative half harder. */
 export function shaperCurve(kind: 'soft' | 'tube', samples = 4096): Float32Array<ArrayBuffer> {
@@ -132,7 +160,7 @@ export class GuitarEngine {
   private inputAnalyser!: AnalyserNode;
   private outputAnalyser!: AnalyserNode;
   private out!: GainNode;
-  private limiter!: DynamicsCompressorNode;
+  private limiter!: WaveShaperNode;
   private monitor!: GainNode;
   private pedals!: Record<PedalKey, Pedal>;
   private n!: Nodes;
@@ -175,16 +203,16 @@ export class GuitarEngine {
         src.start();
         this.demoSource = src;
       } else if (source.kind === 'device') {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            deviceId: source.deviceId ? { exact: source.deviceId } : undefined,
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false,
-            channelCount: { ideal: 2 },
-          },
-          video: false,
-        });
+        // `latency` is a standard constraint Chromium honours; it is just missing from the typings.
+        const audio: MediaTrackConstraints & { latency?: ConstrainDouble } = {
+          deviceId: source.deviceId ? { exact: source.deviceId } : undefined,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: { ideal: 2 },
+          latency: { ideal: 0.005 }, // ask for the smallest input buffer the device allows
+        };
+        const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
         this.attachStream(stream, source.channel);
       } else {
         // "What the PC is playing": the desktop shell grants this with system loopback audio;
@@ -279,6 +307,28 @@ export class GuitarEngine {
     }
     set(n.reverbWet.gain, rig.reverb.mix * 1.2);
     set(n.reverbDry.gain, 1 - 0.3 * rig.reverb.mix);
+  }
+
+  /**
+   * The delay between pick and sound, as far as the browser reports it: the input buffer,
+   * one render quantum for the pedals, and the output buffer. Real-world figures run a
+   * little higher than this.
+   */
+  latencyInfo(): LatencyInfo | null {
+    const ctx = this.ctx;
+    if (!ctx || !this.running) return null;
+    const settings = this.stream?.getAudioTracks()[0]?.getSettings() as (MediaTrackSettings & { latency?: number; sampleRate?: number }) | undefined;
+    const inputMs = typeof settings?.latency === 'number' ? settings.latency * 1000 : null;
+    const graphMs = (128 / ctx.sampleRate) * 1000;
+    const outputMs = (ctx.baseLatency + (ctx.outputLatency || 0)) * 1000;
+    return {
+      inputMs,
+      outputMs,
+      totalMs: (inputMs ?? 0) + graphMs + outputMs,
+      inputRate: typeof settings?.sampleRate === 'number' ? settings.sampleRate : null,
+      contextRate: ctx.sampleRate,
+      compressorOn: this.rig.comp.on,
+    };
   }
 
   /** Peak levels 0..1 at the input (after the gain knob) and at the output. */
@@ -480,13 +530,12 @@ export class GuitarEngine {
     this.outputAnalyser = ctx.createAnalyser();
     this.outputAnalyser.fftSize = 1024;
     this.out = g();
-    // A limiter at the end, so a wild drive setting cannot clip the speakers or a take.
-    this.limiter = ctx.createDynamicsCompressor();
-    this.limiter.threshold.value = -3;
-    this.limiter.knee.value = 0;
-    this.limiter.ratio.value = 20;
-    this.limiter.attack.value = 0.001;
-    this.limiter.release.value = 0.1;
+    // A zero-latency soft clipper at the end, so a wild drive setting cannot clip the
+    // speakers or a take. (See softLimitCurve for why it is not a compressor.)
+    const half = g(0.5);
+    this.limiter = ctx.createWaveShaper();
+    this.limiter.curve = softLimitCurve();
+    this.limiter.oversample = '2x';
     this.monitor = g();
 
     this.inputGain.connect(this.inputAnalyser);
@@ -495,7 +544,7 @@ export class GuitarEngine {
       prev.connect(this.pedals[key].input);
       prev = this.pedals[key].output;
     }
-    prev.connect(this.out).connect(this.limiter);
+    prev.connect(this.out).connect(half).connect(this.limiter);
     this.limiter.connect(this.outputAnalyser);
     this.limiter.connect(this.monitor).connect(ctx.destination);
 

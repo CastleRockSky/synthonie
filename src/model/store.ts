@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 import { emptyCells, newDrumRow, newLayer, newProject, resizeSteps } from './defaults';
-import { GUITAR_PRESETS } from './guitar-presets';
+import { GUITAR_PRESETS, rigToPreset, type UserPreset } from './guitar-presets';
 import type { DrumRow, GuitarRig, Layer, MasterSettings, MelodyTrack, Pattern, PedalKey, Project, SoundId, SoundMeta } from './types';
 
 export type Tab = 'scene' | 'beat' | 'guitar';
@@ -18,6 +18,8 @@ export interface AppState {
   fileName: string | null;
   /** False until built-in sounds are generated and the autosave is restored. */
   ready: boolean;
+  /** Guitar presets the kid saved; loaded from IndexedDB at boot, not part of the project. */
+  guitarPresets: UserPreset[];
 
   setProject: (p: Project, opts?: { clean?: boolean; fileName?: string | null }) => void;
   update: (fn: (p: Project) => Project) => void;
@@ -53,7 +55,12 @@ export interface AppState {
   updateGuitar: (patch: Partial<GuitarRig>) => void;
   /** A pedal's knobs or switch; marks the rig as edited (preset null). */
   updatePedal: <K extends PedalKey>(pedal: K, patch: Partial<GuitarRig[K]>) => void;
+  /** Built-in or saved preset by name. */
   applyGuitarPreset: (name: string) => void;
+  setGuitarPresets: (list: UserPreset[]) => void;
+  /** Keep the current pedal settings under a name (replacing a saved preset of that name). */
+  saveGuitarPreset: (name: string) => void;
+  deleteGuitarPreset: (name: string) => void;
 }
 
 export const useStore = create<AppState>()((set) => {
@@ -67,6 +74,7 @@ export const useStore = create<AppState>()((set) => {
     dirty: false,
     fileName: null,
     ready: false,
+    guitarPresets: [],
 
     setProject: (project, opts) => set({ project, dirty: !opts?.clean, fileName: opts?.fileName ?? null }),
     update,
@@ -135,9 +143,28 @@ export const useStore = create<AppState>()((set) => {
         return { ...p, guitar };
       }),
     applyGuitarPreset: (name) =>
-      update((p) => {
-        const preset = GUITAR_PRESETS[name];
-        return preset ? { ...p, guitar: { ...p.guitar, ...structuredClone(preset), preset: name } } : p;
+      set((s) => {
+        const preset = GUITAR_PRESETS[name] ?? s.guitarPresets.find((u) => u.name === name)?.rig;
+        if (!preset) return s;
+        return { project: { ...s.project, guitar: { ...s.project.guitar, ...structuredClone(preset), preset: name } }, dirty: true };
       }),
+    setGuitarPresets: (guitarPresets) => set({ guitarPresets }),
+    saveGuitarPreset: (name) =>
+      set((s) => {
+        const trimmed = name.trim();
+        if (!trimmed) return s;
+        const entry: UserPreset = { name: trimmed, rig: rigToPreset(s.project.guitar) };
+        const others = s.guitarPresets.filter((u) => u.name !== trimmed);
+        return {
+          guitarPresets: [...others, entry],
+          project: { ...s.project, guitar: { ...s.project.guitar, preset: trimmed } },
+          dirty: true,
+        };
+      }),
+    deleteGuitarPreset: (name) =>
+      set((s) => ({
+        guitarPresets: s.guitarPresets.filter((u) => u.name !== name),
+        project: s.project.guitar.preset === name ? { ...s.project, guitar: { ...s.project.guitar, preset: null } } : s.project,
+      })),
   };
 });

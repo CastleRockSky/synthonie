@@ -54,8 +54,9 @@ Any USB audio interface that Windows sees as a sound device works; the CAD CX2 (
 
 Good to know:
 
-- There is a small delay between the pick and the sound, like on a video call. That is the PC's audio path, and it is normal. If you hear the guitar twice, the interface's own "direct monitor" or "mix" knob is sending the dry guitar to the headphones as well; turn it towards the PC side.
-- Headphones plugged into the interface (or the PC) avoid the guitar amp sound coming back into a microphone.
+- There is a small delay between the pick and the sound, like on a video call. The Guitar tab shows it ("Delay: about N ms") and the ? next to it lists what helps. The short version: plug headphones into the interface's own jack and choose the interface under **Output** (Bluetooth or HDMI sound adds far more delay than anything else); set the interface to the app's sample rate in Windows Sound settings and turn off its audio enhancements; keep Squash off while playing live. About 20 ms is the floor for the browser audio stack the app runs on; the specialised drivers that guitar programs use to go lower are a roadmap item.
+- If you hear the guitar twice, the interface's own "direct monitor" or "mix" knob is sending the dry guitar to the headphones as well; turn it towards the PC side.
+- **Save preset** keeps the current pedal settings under a name. Saved presets live on that PC (not in the project file) and appear next to the built-in ones with a star; the ✕ deletes one.
 - **Guitar Rig** or any other amp program: run it as usual, then in Synthonie choose "What the PC is playing" as the input and press Record take. That records everything the PC plays, so stop Synthonie's own Play first. (In a browser rather than the installed app, the screen-share picker appears: choose the whole screen and tick "Share system audio".)
 - Guitar Rig's `.ngrr` preset files are not something Synthonie can play: they describe Guitar Rig's own amps and effects. See the roadmap in the spec for what an import could and could not do.
 

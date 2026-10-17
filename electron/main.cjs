@@ -170,13 +170,15 @@ function createWindow() {
  */
 function allowMicrophoneOnly() {
   const ses = session.defaultSession;
+  // 'speaker-selection' lets the page route sound to a chosen output device (the guitar
+  // interface's headphone jack, for less delay).
   ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (permission === 'display-capture') return callback(true);
+    if (permission === 'display-capture' || permission === 'speaker-selection') return callback(true);
     const types = details.mediaTypes ?? [];
     callback(permission === 'media' && !types.includes('video'));
   });
   ses.setPermissionCheckHandler((_webContents, permission, _origin, details) => {
-    if (permission === 'display-capture') return true;
+    if (permission === 'display-capture' || permission === 'speaker-selection') return true;
     return permission === 'media' && details.mediaType !== 'video';
   });
   ses.setDisplayMediaRequestHandler(
