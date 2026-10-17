@@ -90,6 +90,7 @@ function setupAutoUpdate() {
   autoUpdater.logger = log;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.disableWebInstaller = true; // we ship a normal installer, not a web stub
 
   autoUpdater.on('update-available', (info) => log.info(`auto-update: ${info.version} available, downloading`));
   autoUpdater.on('update-not-available', () => log.info('auto-update: up to date'));
@@ -106,7 +107,8 @@ function setupAutoUpdate() {
       defaultId: 0,
       cancelId: 1,
     });
-    if (response === 0) autoUpdater.quitAndInstall();
+    // Silent install, then relaunch: the app just disappears for a moment and comes back new.
+    if (response === 0) autoUpdater.quitAndInstall(true, true);
   });
 
   // A failed check (offline, no release yet) is already reported by the 'error' event above.

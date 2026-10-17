@@ -33,7 +33,27 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Build and publish installer
+      # Create the release first, as a draft, so electron-builder only attaches files to it.
+      # Left to itself it creates the release while uploading the installer and the .blockmap
+      # in parallel, which once produced two releases for one tag. Installed copies ignore
+      # drafts, so nothing is visible to them until the last step publishes it.
+      - name: Create the draft release
+        run: gh release create "${{ github.ref_name }}" --draft --title "${{ github.ref_name }}" --notes "Synthonie ${{ github.ref_name }}. Installed copies pick this version up automatically."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and attach the installer
         run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Without the .blockmap every update is a full download instead of a small differential one.
+      - name: Make sure the blockmap is attached
+        run: gh release upload "${{ github.ref_name }}" (Get-ChildItem release/*.blockmap).FullName --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the release
+        run: gh release edit "${{ github.ref_name }}" --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
