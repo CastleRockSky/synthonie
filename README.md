@@ -48,7 +48,7 @@ Releases are built by GitHub Actions and published as GitHub Releases, and the i
 
 One-time setup:
 
-1. Create the public repo named in `package.json` under `build.publish` (currently `CastleRockSky/synthonie`) and push this code to it. With the GitHub CLI logged in:
+1. Create the public repo named under `publish` in `electron-builder.config.cjs` (currently `CastleRockSky/synthonie`) and push this code to it. With the GitHub CLI logged in:
 
    ```bash
    gh repo create CastleRockSky/synthonie --public --source=. --remote=origin --push
@@ -111,6 +111,7 @@ In the browser DevTools console (or F12 inside the desktop app), `synthonie.engi
 | `src/app/` | Startup (`boot.ts`), the engine and sound bank singletons, and the button actions (`actions.ts`). |
 | `electron/` | The desktop shell: `main.cjs` opens the window, allows the microphone, shows the native file dialogs, hands over a project that was double-clicked in Explorer, and checks GitHub Releases for updates; `preload.cjs` exposes the few file calls to the page as `window.synthonieDesktop`. |
 | `.github/workflows/` | `release.yml` builds and publishes the installer when a `v*` tag is pushed. |
+| `electron-builder.config.cjs` | Installer settings: app id, icon, file associations, and the GitHub repo that updates are published to. |
 | `build/` | The app icon used by the installer and the window. |
 | `scripts/` | Launchers and the icon generator. |
 
