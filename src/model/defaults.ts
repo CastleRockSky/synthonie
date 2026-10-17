@@ -1,5 +1,6 @@
 import { builtinSoundId } from '../audio/bank';
 import { BUILTINS } from '../audio/builtins';
+import { defaultRig } from './guitar-presets';
 import type { DrumRow, Layer, Project, SoundId, SoundMeta } from './types';
 
 export const APP_NAME = 'Synthonie';
@@ -26,6 +27,12 @@ export function withAllBuiltins(p: Project): Project {
   const have = new Set(p.sounds.map((s) => s.id));
   const missing = builtinSoundMetas().filter((m) => !have.has(m.id));
   return missing.length ? { ...p, sounds: [...p.sounds, ...missing] } : p;
+}
+
+/** Everything a loaded project might lack: built-ins added since it was saved, the guitar rig (v0.3). */
+export function normalizeProject(p: Project): Project {
+  const withBuiltins = withAllBuiltins(p);
+  return withBuiltins.guitar ? withBuiltins : { ...withBuiltins, guitar: defaultRig() };
 }
 
 /** Remove sounds (and anything using them) from a project. */
@@ -113,5 +120,6 @@ export function newProject(): Project {
     master: { volume: 0.9, reverbSize: 2, reverbMix: 0.5 },
     sceneEnabled: true,
     beatEnabled: false,
+    guitar: defaultRig(),
   };
 }

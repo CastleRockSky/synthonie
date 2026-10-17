@@ -26,6 +26,7 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 | **Transport** | Play/Stop plays the Soundscape and the Beat together. Each has its own on/off switch. Space bar toggles play. |
 | **Master** | Master volume, Space size (reverb length) and Space amount (reverb return). |
 | **Record** | Microphone → live level meter → stop → auto-trim silence → preview → name it → it becomes a Sound. |
+| **Guitar** | A pedalboard for a real guitar. Input: the USB interface (input 1 or 2), the built-in demo riff, or what the PC is playing (to record another program such as Guitar Rig). Then Gate, Squash (compressor), Drive, Amp with a speaker cab, Chorus, Tremolo, Delay, Reverb and Volume, with presets (Clean, Crunch, Lead, Heavy, Dreamy, Surf), a tuner, and **Record take**, which drops the result into Sounds. The rig is saved with the project. |
 | **Export** | Render to a stereo 44.1 kHz OGG (Vorbis, for RPG Maker, Godot, Unity) or WAV of N seconds. Quick buttons for 1 loop, 4 loops, 30 s, 60 s. Optional seamless loop crossfade. |
 | **Project** | One `.synthonie` file (a zip holding `project.json` plus `sounds/`). Also autosaved to the browser's IndexedDB so an accidental close loses nothing. |
 
@@ -59,7 +60,8 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 - **State:** one immutable `Project` object in a zustand store. The engine diffs the previous and next project on every change and applies it live while playing: slider moves update node parameters, structural changes restart just the affected layer, grid edits are picked up at the next step.
 - **Sounds:** decoded `AudioBuffer`s and original file bytes live in a `SoundBank` outside React state. The project only stores metadata, so the UI state stays small and serializable.
 - **Files:** in the desktop app, Electron's native dialogs over the preload bridge; in a browser, the File System Access API with a download/upload fallback. Either way Save overwrites the opened file silently and Open/Save-as show native dialogs. IndexedDB autosave of the project and its sound bytes.
-- **Recording:** `getUserMedia` into an `AudioWorklet` that streams raw float samples to the page, so recordings are lossless and the meter is live.
+- **Recording:** `getUserMedia` into an `AudioWorklet` that streams raw float samples to the page, so recordings are lossless and the meter is live. The same worklet records any node, which is how a guitar take is captured after the pedals.
+- **Guitar rig:** `src/audio/guitar.ts` builds the pedal chain once from Web Audio nodes (an `AudioWorklet` gate, `WaveShaper` drive and amp, biquad EQ and cabinet, LFO-modulated delay for chorus, a feedback delay, the convolver reverb, a limiter). Each pedal is a dry/wet pair, so on/off is a short crossfade. Knobs are 0..1 in the project and mapped to units in the engine; the chosen input device is per machine (localStorage). "What the PC is playing" is `getDisplayMedia`, which the desktop shell answers with Windows loopback audio. Round-trip latency through the browser audio stack is roughly 20 to 40 ms: fine for practice and recording, not for a live gig.
 
 ### Source layout
 
@@ -67,7 +69,8 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 src/
   model/      types.ts (the Project document), defaults.ts, store.ts (zustand actions)
   audio/      engine.ts (live + offline), builtins.ts (generated sounds), synth.ts (melody instruments),
-              scales.ts, recorder.ts (mic), reverb.ts, wav.ts, ogg.ts (Vorbis), dsp.ts (pure helpers), bank.ts, rng.ts
+              scales.ts, recorder.ts (mic or any node), reverb.ts, wav.ts, ogg.ts (Vorbis), dsp.ts (pure helpers), bank.ts, rng.ts,
+              guitar.ts (the pedalboard), guitar-demo.ts (plucked demo riff), pitch.ts (tuner)
   files/      project-file.ts (.synthonie zip), fs.ts (pickers), autosave.ts, kv.ts (IndexedDB), import.ts
   ui/         TopBar, SoundLibrary, Soundscape/LayerCard, BeatMaker/DrumGrid/MelodyGrid,
               RecorderPanel, ExportDialog, HelpDialog, controls
@@ -99,6 +102,11 @@ Each version is a set of independent features. Any one can be pulled forward.
 **v0.4 — Game integration**
 - Named scenes (Explore, Combat, Town) with crossfade transitions and an "intensity" slider that fades layers in and out, previewing adaptive audio.
 - Export OGG: **done** (Vorbis via WebAssembly, the default export format). Still to do: RPG Maker's `LOOPSTART` / `LOOPLENGTH` comment tags for intro-then-loop music; an `.m4a` copy for RPG Maker MV browser builds; a scene pack (folder + manifest JSON) ready for Godot / Unity / Unreal; batch export.
+
+**v0.6 — Guitar**
+- Pedalboard, presets, tuner, demo riff, takes into Sounds, system-audio input: **done**.
+- Next: stereo takes (chorus and reverb are stereo), wah, flanger, octaver, loadable cabinet impulse files, a looper, a count-in and play-along with the Beat, a MIDI foot switch for presets.
+- Guitar Rig `.ngrr` presets: their format is not documented, and the modules they describe are Guitar Rig's own, so at best an import could set up a similar chain here (same pedal order, roughly matching knobs), not reproduce the sound. Needs a few sample files to look at before deciding. Recording Guitar Rig's real output works today through "What the PC is playing".
 
 **v0.5 — Packaging and input**
 - Installer: **done** (Electron shell + NSIS installer via `npm run package`), so no terminal or Node is needed on the kid's PC.

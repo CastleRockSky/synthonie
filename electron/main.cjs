@@ -7,7 +7,7 @@
 // Plain CommonJS on purpose: package.json is "type": "module" for Vite, and a .cjs
 // file is the simplest thing Electron can load without a build step.
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, desktopCapturer, dialog, ipcMain, session, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log/main');
 const fs = require('node:fs/promises');
@@ -161,16 +161,35 @@ function createWindow() {
   else void win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
 
-/** getUserMedia for audio is the only permission the app needs; everything else is refused. */
+/**
+ * Audio input (the microphone or a guitar interface) and "what the PC is playing" are the
+ * only permissions the app needs; everything else is refused. The second one answers the
+ * page's getDisplayMedia with the whole screen plus Windows loopback audio, which is how
+ * the Guitar tab records another program such as Guitar Rig. The page drops the video.
+ */
 function allowMicrophoneOnly() {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission === 'display-capture') return callback(true);
     const types = details.mediaTypes ?? [];
     callback(permission === 'media' && !types.includes('video'));
   });
   ses.setPermissionCheckHandler((_webContents, permission, _origin, details) => {
+    if (permission === 'display-capture') return true;
     return permission === 'media' && details.mediaType !== 'video';
   });
+  ses.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ['screen'] })
+        .then((sources) => callback({ video: sources[0], audio: 'loopback' }))
+        .catch((e) => {
+          log.warn(`system audio capture failed: ${e.message}`);
+          callback({});
+        });
+    },
+    { useSystemPicker: false },
+  );
 }
 
 /**

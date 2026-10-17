@@ -3,9 +3,10 @@
 
 import { create } from 'zustand';
 import { emptyCells, newDrumRow, newLayer, newProject, resizeSteps } from './defaults';
-import type { DrumRow, Layer, MasterSettings, MelodyTrack, Pattern, Project, SoundId, SoundMeta } from './types';
+import { GUITAR_PRESETS } from './guitar-presets';
+import type { DrumRow, GuitarRig, Layer, MasterSettings, MelodyTrack, Pattern, PedalKey, Project, SoundId, SoundMeta } from './types';
 
-export type Tab = 'scene' | 'beat';
+export type Tab = 'scene' | 'beat' | 'guitar';
 
 export interface AppState {
   project: Project;
@@ -47,6 +48,12 @@ export interface AppState {
   updateMaster: (patch: Partial<MasterSettings>) => void;
   setSceneEnabled: (b: boolean) => void;
   setBeatEnabled: (b: boolean) => void;
+
+  /** Rig-level settings (input gain, monitor, volume); keeps the preset name. */
+  updateGuitar: (patch: Partial<GuitarRig>) => void;
+  /** A pedal's knobs or switch; marks the rig as edited (preset null). */
+  updatePedal: <K extends PedalKey>(pedal: K, patch: Partial<GuitarRig[K]>) => void;
+  applyGuitarPreset: (name: string) => void;
 }
 
 export const useStore = create<AppState>()((set) => {
@@ -119,5 +126,18 @@ export const useStore = create<AppState>()((set) => {
     updateMaster: (patch) => update((p) => ({ ...p, master: { ...p.master, ...patch } })),
     setSceneEnabled: (sceneEnabled) => update((p) => ({ ...p, sceneEnabled })),
     setBeatEnabled: (beatEnabled) => update((p) => ({ ...p, beatEnabled })),
+
+    updateGuitar: (patch) => update((p) => ({ ...p, guitar: { ...p.guitar, ...patch } })),
+    updatePedal: (pedal, patch) =>
+      update((p) => {
+        const guitar: GuitarRig = { ...p.guitar, preset: null };
+        (guitar as unknown as Record<string, unknown>)[pedal] = { ...(p.guitar[pedal] as object), ...(patch as object) };
+        return { ...p, guitar };
+      }),
+    applyGuitarPreset: (name) =>
+      update((p) => {
+        const preset = GUITAR_PRESETS[name];
+        return preset ? { ...p, guitar: { ...p.guitar, ...structuredClone(preset), preset: name } } : p;
+      }),
   };
 });

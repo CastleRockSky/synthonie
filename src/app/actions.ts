@@ -8,7 +8,7 @@ import { forgetSoundBytes, persistSoundBytes } from '../files/autosave';
 import { desktopBridge, type DesktopFile } from '../files/desktop';
 import { AUDIO_TYPE, OGG_TYPE, PROJECT_TYPE, WAV_TYPE, baseName, extOf, openFiles, safeName, saveBytes, type FileRef } from '../files/fs';
 import { packProject, unpackProject } from '../files/project-file';
-import { PROJECT_EXT, dropSounds, newProject as makeNewProject, uid, withAllBuiltins } from '../model/defaults';
+import { PROJECT_EXT, dropSounds, newProject as makeNewProject, uid, normalizeProject } from '../model/defaults';
 import { useStore } from '../model/store';
 import type { Project, SoundId } from '../model/types';
 import { bank, engine } from './instances';
@@ -73,7 +73,7 @@ export async function loadProjectBytes(bytes: Uint8Array, fileName: string | nul
   }
   engine.stop();
   fileRef = ref;
-  useStore.getState().setProject(withAllBuiltins(dropSounds(project, bad)), { clean: true, fileName });
+  useStore.getState().setProject(normalizeProject(dropSounds(project, bad)), { clean: true, fileName });
   if (bad.size) window.alert(`${bad.size} sound(s) in this project could not be loaded and were skipped.`);
 }
 

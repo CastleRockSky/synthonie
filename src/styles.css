@@ -9,6 +9,7 @@
   --accent: #5ec8ff;
   --scene: #6fcf97;
   --beat: #ff9f5a;
+  --guitar: #c792ea;
   --note: #5ec8ff;
   --danger: #ff6b6b;
   --rec: #ff4d6d;
@@ -787,6 +788,185 @@ input[type='checkbox'] {
   height: 100%;
   background: linear-gradient(90deg, var(--scene), #ffd166 70%, var(--danger));
   transition: width 0.08s;
+}
+
+/* ---------- small screens ---------- */
+
+/* ---------- guitar ---------- */
+
+.tab.active.guitar {
+  background: var(--guitar);
+  color: #1b1027;
+}
+
+.guitar button.toggle.on {
+  background: var(--guitar);
+  color: #1b1027;
+}
+
+.guitar-input,
+.guitar-out {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+}
+
+.guitar-input .slider,
+.guitar-out .slider {
+  min-width: 220px;
+}
+
+.meter.small {
+  width: 120px;
+  height: 12px;
+  flex: none;
+}
+
+.meter-fill.hot {
+  background: var(--danger);
+}
+
+.preset-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pedalboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.pedal {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  border-top: 5px solid #3a404d;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.65;
+  transition: opacity 0.15s;
+}
+
+.pedal.on {
+  opacity: 1;
+  border-top-color: var(--guitar);
+}
+
+.stomp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 2px solid #3a404d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.pedal.on .stomp {
+  border-color: var(--guitar);
+}
+
+.pedal-icon {
+  font-size: 22px;
+}
+
+.pedal-name {
+  flex: 1;
+  text-align: left;
+}
+
+.led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3a404d;
+}
+
+.pedal.on .led {
+  background: #ff4d4d;
+  box-shadow: 0 0 8px #ff4d4d;
+}
+
+.pedal-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pedal-knobs .slider {
+  min-width: 0;
+  grid-template-columns: 72px 1fr 48px;
+}
+
+.tuner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  padding: 14px;
+  border-radius: var(--radius);
+}
+
+.tuner-note {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 52px;
+}
+
+.tuner.in-tune .tuner-note {
+  color: var(--scene);
+}
+
+.tuner-scale {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+  height: 14px;
+  background: var(--panel-2);
+  border-radius: 7px;
+}
+
+.tuner-scale::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 2px;
+  height: 22px;
+  background: var(--muted);
+}
+
+.tuner-needle {
+  position: absolute;
+  top: -2px;
+  width: 6px;
+  height: 18px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: var(--beat);
+  transition: left 0.08s;
+}
+
+.tuner.in-tune .tuner-needle {
+  background: var(--scene);
+}
+
+.take-recorder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ---------- small screens ---------- */

@@ -90,6 +90,74 @@ export interface MasterSettings {
   reverbMix: number;
 }
 
+// ---- The guitar rig (pedalboard). Every knob is 0..1; src/audio/guitar.ts maps them to units. ----
+
+export interface GatePedal {
+  on: boolean;
+  threshold: number;
+}
+export interface CompPedal {
+  on: boolean;
+  amount: number;
+}
+export interface DrivePedal {
+  on: boolean;
+  drive: number;
+  tone: number;
+  level: number;
+}
+export interface AmpPedal {
+  on: boolean;
+  gain: number;
+  bass: number;
+  mid: number;
+  treble: number;
+  /** Speaker cabinet simulation. */
+  cab: boolean;
+}
+export interface ChorusPedal {
+  on: boolean;
+  rate: number;
+  depth: number;
+  mix: number;
+}
+export interface TremoloPedal {
+  on: boolean;
+  rate: number;
+  depth: number;
+}
+export interface DelayPedal {
+  on: boolean;
+  time: number;
+  feedback: number;
+  mix: number;
+}
+export interface ReverbPedal {
+  on: boolean;
+  size: number;
+  mix: number;
+}
+
+export type PedalKey = 'gate' | 'comp' | 'drive' | 'amp' | 'chorus' | 'tremolo' | 'delay' | 'reverb';
+
+export interface GuitarRig {
+  version: 1;
+  /** The preset last applied, or null once a knob was moved. */
+  preset: string | null;
+  inputGain: number;
+  /** Hear the pedalboard through the speakers. */
+  monitor: boolean;
+  volume: number;
+  gate: GatePedal;
+  comp: CompPedal;
+  drive: DrivePedal;
+  amp: AmpPedal;
+  chorus: ChorusPedal;
+  tremolo: TremoloPedal;
+  delay: DelayPedal;
+  reverb: ReverbPedal;
+}
+
 export interface Project {
   version: 1;
   name: string;
@@ -99,4 +167,6 @@ export interface Project {
   master: MasterSettings;
   sceneEnabled: boolean;
   beatEnabled: boolean;
+  /** The guitar pedalboard (added in v0.3; older files get the default rig when loaded). */
+  guitar: GuitarRig;
 }

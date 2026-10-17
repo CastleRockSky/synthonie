@@ -3,7 +3,7 @@
 
 import { getAudioContext } from '../audio/context';
 import { restoreAutosave, startAutosave } from '../files/autosave';
-import { newProject, withAllBuiltins } from '../model/defaults';
+import { newProject, normalizeProject } from '../model/defaults';
 import { useStore } from '../model/store';
 import { watchDesktopProjects } from './actions';
 import { bank } from './instances';
@@ -17,7 +17,7 @@ export async function boot(): Promise<void> {
   await bank.loadBuiltins(ctx);
   const restored = await restoreAutosave(ctx, bank);
   const st = useStore.getState();
-  if (restored) st.setProject(withAllBuiltins(restored.project), { clean: true, fileName: restored.fileName });
+  if (restored) st.setProject(normalizeProject(restored.project), { clean: true, fileName: restored.fileName });
   else st.setProject(newProject(), { clean: true });
   startAutosave();
   st.setReady(true);

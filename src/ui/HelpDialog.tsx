@@ -16,6 +16,11 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           fine. Squares next to each other join into one long note. Try <i>Spooky</i> for dungeons and <i>Happy</i> for towns.
         </p>
         <p>
+          <b>Guitar</b> turns the PC into a pedalboard. Plug the guitar into the interface, pick it as the input, press <i>Input on</i> and stomp on pedals. <i>Record take</i>{' '}
+          puts what you play into Sounds, where it works like any other sound. The demo riff lets you try the pedals with no guitar. A little delay between pick and
+          sound is normal; if you hear two guitars, turn the interface&apos;s own monitor knob down.
+        </p>
+        <p>
           <b>Play</b> (or the space bar) plays the Soundscape and the Beat together. Each has an On/Off switch at the top of its tab. You can change anything
           while it plays.
         </p>

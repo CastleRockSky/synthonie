@@ -5,6 +5,7 @@ import { unlockAudio } from './audio/context';
 import { useStore } from './model/store';
 import { BeatMaker } from './ui/BeatMaker';
 import { ExportDialog } from './ui/ExportDialog';
+import { Guitar } from './ui/Guitar';
 import { HelpDialog } from './ui/HelpDialog';
 import { RecorderPanel } from './ui/RecorderPanel';
 import { SoundLibrary } from './ui/SoundLibrary';
@@ -67,8 +68,13 @@ export default function App() {
             <button className={'tab beat' + (tab === 'beat' ? ' active' : '')} onClick={() => setTab('beat')}>
               🥁 Beat Maker {!beatOn && <span className="off">(off)</span>}
             </button>
+            <button className={'tab guitar' + (tab === 'guitar' ? ' active' : '')} onClick={() => setTab('guitar')}>
+              🎸 Guitar
+            </button>
           </nav>
-          {tab === 'scene' ? <Soundscape /> : <BeatMaker />}
+          {tab === 'scene' && <Soundscape />}
+          {tab === 'beat' && <BeatMaker />}
+          {tab === 'guitar' && <Guitar />}
         </main>
       </div>
       {dialog === 'record' && <RecorderPanel onClose={() => setDialog('none')} />}
