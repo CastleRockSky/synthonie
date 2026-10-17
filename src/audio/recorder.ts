@@ -3,7 +3,7 @@
 // is needed for it.
 
 const WORKLET_CODE = `
-class ZekeRecorder extends AudioWorkletProcessor {
+class SynthonieRecorder extends AudioWorkletProcessor {
   constructor() {
     super();
     this.chunks = [];
@@ -42,7 +42,7 @@ class ZekeRecorder extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('zeke-recorder', ZekeRecorder);
+registerProcessor('synthonie-recorder', SynthonieRecorder);
 `;
 
 const loadedContexts = new WeakSet<BaseAudioContext>();
@@ -100,7 +100,7 @@ export class MicRecorder {
     });
     this.chunks = [];
     this.source = ctx.createMediaStreamSource(this.stream);
-    this.node = new AudioWorkletNode(ctx, 'zeke-recorder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    this.node = new AudioWorkletNode(ctx, 'synthonie-recorder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
     this.node.port.onmessage = (e: MessageEvent) => {
       const d = e.data as { type?: string; samples?: Float32Array; peak?: number };
       if (d?.type === 'chunk' && d.samples) this.chunks.push(d.samples);

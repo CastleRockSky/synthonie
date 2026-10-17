@@ -2,8 +2,8 @@ import { builtinSoundId } from '../audio/bank';
 import { BUILTINS } from '../audio/builtins';
 import type { DrumRow, Layer, Project, SoundId, SoundMeta } from './types';
 
-export const APP_NAME = 'Zeke Synth';
-export const PROJECT_EXT = 'zekeproj';
+export const APP_NAME = 'Synthonie';
+export const PROJECT_EXT = 'synthonie';
 export const MELODY_ROWS = 10;
 
 export function uid(prefix = 'id'): string {

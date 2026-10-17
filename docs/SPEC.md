@@ -1,4 +1,4 @@
-# Zeke Synth — Spec
+# Synthonie — Spec
 
 A soundscape, music-loop and sound-effect maker for an RPG video game, designed for a kid who finds real DAWs overwhelming. It starts with a handful of ideas that map directly onto what a game needs, and is structured so each new idea can be added as a small, separate feature.
 
@@ -26,14 +26,14 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 | **Transport** | Play/Stop plays the Soundscape and the Beat together. Each has its own on/off switch. Space bar toggles play. |
 | **Master** | Master volume, Space size (reverb length) and Space amount (reverb return). |
 | **Record** | Microphone → live level meter → stop → auto-trim silence → preview → name it → it becomes a Sound. |
-| **Export** | Render to a stereo 44.1 kHz WAV of N seconds. Quick buttons for 1 loop, 4 loops, 30 s, 60 s. Optional seamless loop crossfade. |
-| **Project** | One `.zekeproj` file (a zip holding `project.json` plus `sounds/`). Also autosaved to the browser's IndexedDB so an accidental close loses nothing. |
+| **Export** | Render to a stereo 44.1 kHz OGG (Vorbis, for RPG Maker, Godot, Unity) or WAV of N seconds. Quick buttons for 1 loop, 4 loops, 30 s, 60 s. Optional seamless loop crossfade. |
+| **Project** | One `.synthonie` file (a zip holding `project.json` plus `sounds/`). Also autosaved to the browser's IndexedDB so an accidental close loses nothing. |
 
 ## 4. Screen layout
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│ 🎛️ Zeke Synth  [Campfire        ]   New  Open  Save  Save as  Export ? │
+│ 🎛️ Synthonie   [Campfire        ]   New  Open  Save  Save as  Export ? │
 │ ▶ Play   Master ────●──   Space size ──●───   Space amount ─●────      │
 ├─────────────────┬─────────────────────────────────────────────────────┤
 │ SOUNDS          │  [🌲 Soundscape]  [🥁 Beat Maker]                     │
@@ -53,7 +53,7 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 
 ## 5. Architecture
 
-- **Web app**, runs locally in Edge or Chrome: Vite + React + TypeScript. No server logic, no accounts, no internet needed after install. Launch with `start.bat` (serves the built app and opens an Edge app window), or install it as a **Windows desktop app**: an Electron shell (`electron/`) that loads the same build in a window and adds only what a page cannot do itself, through a small bridge typed in `src/files/desktop.ts`. `npm run package` makes the installer, which also registers `.zekeproj` so a double-clicked project opens in the app.
+- **Web app**, runs locally in Edge or Chrome: Vite + React + TypeScript. No server logic, no accounts, no internet needed after install. Launch with `start.bat` (serves the built app and opens an Edge app window), or install it as a **Windows desktop app**: an Electron shell (`electron/`) that loads the same build in a window and adds only what a page cannot do itself, through a small bridge typed in `src/files/desktop.ts`. `npm run package` makes the installer, which also registers `.synthonie` so a double-clicked project opens in the app. Installed copies **update themselves**: a tag push builds a release on GitHub Actions (`.github/workflows/release.yml`), and the shell polls GitHub Releases with electron-updater, downloads in the background and offers a restart.
 - **Audio: Web Audio API directly**, no audio framework. The same engine code builds the live graph and the offline render, so what you hear is what you export. Keeping the raw API visible is deliberate: it is what he would eventually learn, and there is no black box between the UI and the sound.
 - **Scheduling:** a look-ahead scheduler (a timer every 40 ms schedules events ~200 ms ahead on the audio clock) gives sample-accurate timing for drums, notes and random layer hits. The same scheduler schedules the whole duration at once for offline rendering.
 - **State:** one immutable `Project` object in a zustand store. The engine diffs the previous and next project on every change and applies it live while playing: slider moves update node parameters, structural changes restart just the affected layer, grid edits are picked up at the next step.
@@ -67,17 +67,18 @@ Tools like FL Studio, Ableton, Reaper, LMMS and even Audacity front-load hundred
 src/
   model/      types.ts (the Project document), defaults.ts, store.ts (zustand actions)
   audio/      engine.ts (live + offline), builtins.ts (generated sounds), synth.ts (melody instruments),
-              scales.ts, recorder.ts (mic), reverb.ts, wav.ts, dsp.ts (pure helpers), bank.ts, rng.ts
-  files/      project-file.ts (.zekeproj zip), fs.ts (pickers), autosave.ts, kv.ts (IndexedDB), import.ts
+              scales.ts, recorder.ts (mic), reverb.ts, wav.ts, ogg.ts (Vorbis), dsp.ts (pure helpers), bank.ts, rng.ts
+  files/      project-file.ts (.synthonie zip), fs.ts (pickers), autosave.ts, kv.ts (IndexedDB), import.ts
   ui/         TopBar, SoundLibrary, Soundscape/LayerCard, BeatMaker/DrumGrid/MelodyGrid,
               RecorderPanel, ExportDialog, HelpDialog, controls
   app/        boot.ts (startup), instances.ts (engine + bank singletons)
-electron/     main.cjs (window, microphone permission, native dialogs, double-clicked projects), preload.cjs (the window.zekeDesktop bridge)
+electron/     main.cjs (window, microphone permission, native dialogs, double-clicked projects, auto-update), preload.cjs (the window.synthonieDesktop bridge)
+.github/      workflows/release.yml (tag push -> installer published as a GitHub Release)
 ```
 
-### Project file format (`.zekeproj`)
+### Project file format (`.synthonie`)
 
-A zip. `project.json` is the `Project` type with `version: 1`. `sounds/<soundId>.<ext>` holds the original bytes of every `file` sound (imported files are stored as-is; recordings as 16-bit WAV). Built-in sounds are referenced by id and regenerated on load, so they cost nothing in the file.
+A zip. `project.json` is the `Project` type with `version: 1`. `sounds/<soundId>.<ext>` holds the original bytes of every `file` sound (imported files are stored as-is; recordings as 16-bit WAV). Built-in sounds are referenced by id and regenerated on load, so they cost nothing in the file. Files saved by v0.1 (then called Zeke Synth) have the `.zekeproj` extension and the same contents; they still open, and the installer registers both extensions.
 
 ## 6. Roadmap
 
@@ -97,10 +98,11 @@ Each version is a set of independent features. Any one can be pulled forward.
 
 **v0.4 — Game integration**
 - Named scenes (Explore, Combat, Town) with crossfade transitions and an "intensity" slider that fades layers in and out, previewing adaptive audio.
-- Export OGG; export a scene pack (folder + manifest JSON) ready for Godot / Unity / Unreal; batch export.
+- Export OGG: **done** (Vorbis via WebAssembly, the default export format). Still to do: RPG Maker's `LOOPSTART` / `LOOPLENGTH` comment tags for intro-then-loop music; an `.m4a` copy for RPG Maker MV browser builds; a scene pack (folder + manifest JSON) ready for Godot / Unity / Unreal; batch export.
 
 **v0.5 — Packaging and input**
 - Installer: **done** (Electron shell + NSIS installer via `npm run package`), so no terminal or Node is needed on the kid's PC.
+- Auto-update: **done** (GitHub Releases + electron-updater; `npm version minor && git push --follow-tags` ships a version).
 - MIDI keyboard input; computer-keyboard piano; themes.
 
 ## 7. What each stage teaches

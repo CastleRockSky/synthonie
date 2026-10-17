@@ -14,9 +14,9 @@ const server = await createServer({ root, server: { port: 5173, strictPort: fals
 await server.listen();
 const url = server.resolvedUrls?.local[0];
 if (!url) throw new Error('Vite did not report a local URL');
-console.log(`Zeke Synth desktop shell, hot-reloading from ${url}`);
+console.log(`Synthonie desktop shell, hot-reloading from ${url}`);
 
-const child = spawn(electron, ['.'], { cwd: root, stdio: 'inherit', env: { ...process.env, ZEKE_DEV_URL: url } });
+const child = spawn(electron, ['.'], { cwd: root, stdio: 'inherit', env: { ...process.env, SYNTHONIE_DEV_URL: url } });
 child.on('exit', async (code) => {
   await server.close();
   process.exit(code ?? 0);

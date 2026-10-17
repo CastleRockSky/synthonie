@@ -20,10 +20,11 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           while it plays.
         </p>
         <p>
-          <b>Export WAV</b> makes a .wav file to put in your game. <i>Seamless loop</i> blends the end into the start so it repeats without a gap.
+          <b>Export</b> makes a sound file to put in your game: <i>OGG</i> for RPG Maker (drop it in the audio/bgm, bgs or se folder), or <i>WAV</i>. <i>Seamless loop</i>{' '}
+          blends the end into the start so it repeats without a gap.
         </p>
         <p>
-          <b>Save</b> keeps everything in one .zekeproj file, including your recordings. The app also remembers your work if you close it by accident.
+          <b>Save</b> keeps everything in one .synthonie file, including your recordings. The app also remembers your work if you close it by accident.
         </p>
         <p className="hint">Secret words: Muffle is a low-pass filter, Space is reverb, the tune grid is a pentatonic scale, and a Loop is a sample loop.</p>
       </div>

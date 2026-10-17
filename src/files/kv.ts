@@ -1,5 +1,7 @@
 // A tiny promise wrapper over IndexedDB, used for autosave (it can hold binary data).
 
+// Still the v0.1 name on purpose: renaming the database would orphan every autosave made
+// under the old app name. Only the user-facing name became Synthonie.
 const DB_NAME = 'zeke-synth';
 const STORE = 'kv';
 

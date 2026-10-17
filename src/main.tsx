@@ -6,8 +6,8 @@ import { useStore } from './model/store';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './styles.css';
 
-// Handy in DevTools: zeke.engine, zeke.bank, zeke.store.getState()
-window.zeke = { engine, bank, store: useStore };
+// Handy in DevTools: synthonie.engine, synthonie.bank, synthonie.store.getState()
+window.synthonie = { engine, bank, store: useStore };
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

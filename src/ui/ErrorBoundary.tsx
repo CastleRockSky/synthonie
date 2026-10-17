@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('Zeke Synth crashed:', error, info.componentStack);
+    console.error('Synthonie crashed:', error, info.componentStack);
   }
 
   render(): ReactNode {

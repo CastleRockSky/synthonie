@@ -1,4 +1,4 @@
-// The .zekeproj format: a zip with project.json plus sounds/<id>.<ext> for file sounds.
+// The .synthonie format: a zip with project.json plus sounds/<id>.<ext> for file sounds.
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { SoundBank, StoredBytes } from '../audio/bank';
@@ -28,10 +28,10 @@ export function unpackProject(bytes: Uint8Array): UnpackedProject {
   try {
     files = unzipSync(bytes);
   } catch {
-    throw new Error('That is not a Zeke Synth project file.');
+    throw new Error('That is not a Synthonie project file.');
   }
   const json = files['project.json'];
-  if (!json) throw new Error('Not a Zeke Synth project (no project.json inside).');
+  if (!json) throw new Error('Not a Synthonie project (no project.json inside).');
   const project = migrate(JSON.parse(strFromU8(json)));
   const sounds = new Map<SoundId, StoredBytes>();
   for (const [path, data] of Object.entries(files)) {

@@ -2,10 +2,11 @@
 
 import { getAudioContext } from '../audio/context';
 import { patternSeconds } from '../audio/engine';
+import { OGG_QUALITY, audioBufferToOgg } from '../audio/ogg';
 import { audioBufferToWav, copyChannel, encodeWav } from '../audio/wav';
 import { forgetSoundBytes, persistSoundBytes } from '../files/autosave';
 import { desktopBridge, type DesktopFile } from '../files/desktop';
-import { AUDIO_TYPE, PROJECT_TYPE, WAV_TYPE, baseName, extOf, openFiles, safeName, saveBytes, type FileRef } from '../files/fs';
+import { AUDIO_TYPE, OGG_TYPE, PROJECT_TYPE, WAV_TYPE, baseName, extOf, openFiles, safeName, saveBytes, type FileRef } from '../files/fs';
 import { packProject, unpackProject } from '../files/project-file';
 import { PROJECT_EXT, dropSounds, newProject as makeNewProject, uid, withAllBuiltins } from '../model/defaults';
 import { useStore } from '../model/store';
@@ -146,9 +147,29 @@ export function loopSeconds(p: Project): number {
   return patternSeconds(p.pattern);
 }
 
-export async function exportWav(opts: { seconds: number; crossfade: number }): Promise<boolean> {
+/** WAV is uncompressed and universal; OGG (Vorbis) is what RPG Maker, Godot and Unity read, at a tenth of the size. */
+export type ExportFormat = 'wav' | 'ogg';
+
+export interface ExportOptions {
+  seconds: number;
+  /** Seconds of tail folded into the start for a seamless loop; 0 for none. */
+  crossfade: number;
+  format: ExportFormat;
+  /** Short status text as the export moves through rendering and encoding. */
+  onProgress?: (status: string) => void;
+}
+
+/** Render the project and save it. Resolves false if the save dialog was cancelled. */
+export async function exportAudio(opts: ExportOptions): Promise<boolean> {
   const p = useStore.getState().project;
+  opts.onProgress?.('Rendering…');
   const buf = await engine.render(p, opts.seconds, { loopCrossfade: opts.crossfade, headFade: !hasBeatContent(p) });
-  const res = await saveBytes(audioBufferToWav(buf), `${safeName(p.name)}.wav`, WAV_TYPE, 'audio/wav');
-  return !!res;
+  const name = safeName(p.name);
+  if (opts.format === 'ogg') {
+    const ogg = await audioBufferToOgg(buf, OGG_QUALITY, (f) => opts.onProgress?.(`Encoding ${Math.round(f * 100)}%…`));
+    opts.onProgress?.('Saving…');
+    return !!(await saveBytes(ogg, `${name}.ogg`, OGG_TYPE, 'audio/ogg'));
+  }
+  opts.onProgress?.('Saving…');
+  return !!(await saveBytes(audioBufferToWav(buf), `${name}.wav`, WAV_TYPE, 'audio/wav'));
 }

@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Zeke Synth
+title Synthonie
 where node >nul 2>nul
 if errorlevel 1 (
   echo Node.js is not installed. Get it from https://nodejs.org then run this again.

@@ -31,8 +31,8 @@ export function TopBar({ onOpenExport, onOpenHelp }: { onOpenExport: () => void;
         <button onClick={() => void actions.openProject()}>Open</button>
         <button onClick={() => void actions.saveProject(false)}>Save</button>
         <button onClick={() => void actions.saveProject(true)}>Save as</button>
-        <button className="primary" onClick={onOpenExport}>
-          Export WAV
+        <button className="primary" onClick={onOpenExport} title="Make an .ogg or .wav file for your game">
+          Export
         </button>
         <button className="icon-btn" onClick={onOpenHelp} title="Help">
           ?

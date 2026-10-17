@@ -5,8 +5,10 @@
 
 import { desktopBridge, type DialogFilter } from './desktop';
 
-export const PROJECT_TYPE: FilePickerAcceptType = { description: 'Zeke Synth project', accept: { 'application/zip': ['.zekeproj'] } };
+// .zekeproj is the v0.1 extension (same format); it stays openable, new saves use .synthonie.
+export const PROJECT_TYPE: FilePickerAcceptType = { description: 'Synthonie project', accept: { 'application/zip': ['.synthonie', '.zekeproj'] } };
 export const WAV_TYPE: FilePickerAcceptType = { description: 'WAV audio', accept: { 'audio/wav': ['.wav'] } };
+export const OGG_TYPE: FilePickerAcceptType = { description: 'OGG audio', accept: { 'audio/ogg': ['.ogg'] } };
 export const AUDIO_TYPE: FilePickerAcceptType = {
   description: 'Audio files',
   accept: { 'audio/*': ['.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac', '.webm', '.opus'] },

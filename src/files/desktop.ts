@@ -1,4 +1,4 @@
-// The bridge the Electron shell puts on `window.zekeDesktop` (electron/preload.cjs sets it
+// The bridge the Electron shell puts on `window.synthonieDesktop` (electron/preload.cjs sets it
 // up; electron/main.cjs does the work). In a plain browser it is undefined and fs.ts
 // uses the web APIs instead. Keep the two sides of this interface in step by hand.
 
@@ -32,11 +32,11 @@ export interface DesktopBridge {
 
 declare global {
   interface Window {
-    zekeDesktop?: DesktopBridge;
+    synthonieDesktop?: DesktopBridge;
   }
 }
 
 /** The bridge when running inside the desktop app, otherwise undefined. */
 export function desktopBridge(): DesktopBridge | undefined {
-  return typeof window === 'undefined' ? undefined : window.zekeDesktop;
+  return typeof window === 'undefined' ? undefined : window.synthonieDesktop;
 }

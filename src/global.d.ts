@@ -27,9 +27,9 @@ declare global {
   }
 
   // Debug handle exposed in main.tsx so you can poke the engine from DevTools:
-  //   zeke.engine.play(), zeke.store.getState().project, ...
+  //   synthonie.engine.play(), synthonie.store.getState().project, ...
   // eslint-disable-next-line no-var
-  var zeke: Record<string, unknown> | undefined;
+  var synthonie: Record<string, unknown> | undefined;
 }
 
 export {};

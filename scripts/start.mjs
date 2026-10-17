@@ -48,11 +48,11 @@ function openBrowser() {
 const { build, preview } = await import('vite');
 
 if (needsBuild()) {
-  console.log('Building Zeke Synth (first run or the code changed)…');
+  console.log('Building Synthonie (first run or the code changed)…');
   await build({ root, logLevel: 'warn' });
 }
 
 await preview({ root, preview: { port: PORT, strictPort: true, host: '127.0.0.1' } });
-console.log(`Zeke Synth is running at ${url}`);
+console.log(`Synthonie is running at ${url}`);
 console.log('Keep this window open while you use it. Close it to stop.');
 openBrowser();
